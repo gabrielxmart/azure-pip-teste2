@@ -1,20 +1,32 @@
+trigger: none # Deixei manual para você disparar o teste no botão "Run pipeline"
+
+pool:
+  vmImage: 'ubuntu-latest' # Se o nexusiq.xmartsolutions.work for fechado em VPN/rede interna, troque para o nosso pool Self-Hosted
+
 jobs:
-- job: BuildAndScan
-  pool:
-    vmImage: 'ubuntu-latest' # Ajuste se for rodar em pool Self-Hosted nosso
+- job: SonatypePoC
+  displayName: 'Teste Sonatype IQ - XPI'
   steps:
+  # 1. Necessário para a extensão da Sonatype publicar as abas visuais no Azure DevOps
   - checkout: self
     persistCredentials: true
 
-  # (Seu step de build/restore de dependências aqui, se necessário)
+  # 2. Simula um artefato vulnerável (Log4j 2.14.1) caso o repo não tenha build configurado ainda
+  # Se o repositório já tiver o código/build do seu teste, pode remover ou comentar este step
+  - script: |
+      mkdir -p target
+      curl -sL https://repo1.maven.org/maven2/org/apache/logging/log4j/log4j-core/2.14.1/log4j-core-2.14.1.jar -o target/log4j-core-2.14.1.jar
+      ls -lh target/
+    displayName: 'Gerar artefato vulnerável para teste (Log4j)'
 
+  # 3. Chamada oficial do Plugin da Sonatype
   - task: SonatypeEvaluate@2
     displayName: 'Sonatype IQ - Policy Evaluation'
     env:
       SYSTEM_ACCESSTOKEN: $(System.AccessToken)
     inputs:
       nexusIqService: 'nexus-iq-connection'
-      applicationId: 'app-poc-xpi' # Substitua pelo Public ID da aplicação no IQ Server
+      applicationId: 'minha-aplicacao'
       stage: 'build'
       scanTargets: '**/*'
       ignoreSystemErrors: false
